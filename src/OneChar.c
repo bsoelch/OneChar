@@ -40,7 +40,7 @@ int opLevel[]={
 		[OP_PLUS]=3,[OP_MINUS]=3,
 		[OP_MULT]=4,[OP_DIV]=4,[OP_MOD]=4,
 		[OP_POW]=5,
-		[OP_SAVE]=5,
+		[OP_SAVE]=6,
 };
 
 int64_t mem[1024];
@@ -48,14 +48,15 @@ int64_t valStack[1024];
 size_t valCount=0;
 size_t valCap=1024;
 bool nextVal=true;
+bool hadSpace=false;
 Operator opStack[1024];
 size_t opCount=0;
 size_t opCap=1024;
 size_t ipStack[1024];
 size_t ipCount=0;
 size_t ipCap=1024;
-bool skipLoop=false;
-bool skipProc=false;
+int64_t loopCount=0;
+int64_t procCount=0;
 
 bool stringMode=false;
 bool escapeMode=false;
@@ -180,18 +181,23 @@ void runProgram(char* chars,size_t size){
 			}else{
 				valStack[valCount++]=chars[ip];
 			}
-		}else if(skipProc){
-			if(chars[ip]=='}'){
-				skipProc=false;
+		}else if(procCount>0){
+			if(chars[ip]=='{'){
+				procCount++;
+			}else if(chars[ip]=='}'){
+				procCount--;
 			}
-		}else if(skipLoop){
+		}else if(loopCount>0){
 			if(chars[ip]==']'){
-				skipLoop=false;
+				loopCount++;
+			}else if(chars[ip]==']'){
+				loopCount--;
 			}
 		}else{
 			switch(chars[ip]){
 			case '0':case '1':case '2':case '3':case '4':
 			case '5':case '6':case '7':case '8':case '9':
+				hadSpace=false;
 				if(nextVal){
 					nextVal=false;
 					valStack[valCount++]=chars[ip]-'0';
@@ -200,26 +206,32 @@ void runProgram(char* chars,size_t size){
 				}
 				break;
 			case '+':
+				hadSpace=false;
 				evaluateOps(opLevel[OP_PLUS]);
 				opStack[opCount++]=OP_PLUS;
 				nextVal=true;
 				break;
 			case '-':
+				hadSpace=false;
 				evaluateOps(opLevel[OP_MINUS]);
 				opStack[opCount++]=OP_MINUS;
 				nextVal=true;
 				break;
 			case '*':
+				hadSpace=false;
+				hadSpace=false;
 				evaluateOps(opLevel[OP_MULT]);
 				opStack[opCount++]=OP_MULT;
 				nextVal=true;
 				break;
 			case '/':
+				hadSpace=false;
 				evaluateOps(opLevel[OP_DIV]);
-				valStack[valCount++]=0;
 				opStack[opCount++]=OP_DIV;
+				nextVal=true;
 				break;
 			case '%':
+				hadSpace=false;
 				evaluateOps(opLevel[OP_MOD]);
 				opStack[opCount++]=OP_MOD;
 				nextVal=true;
@@ -250,19 +262,23 @@ void runProgram(char* chars,size_t size){
 				nextVal=true;
 				break;
 			case '|':
+				hadSpace=false;
 				evaluateOps(opLevel[OP_OR]);
 				opStack[opCount++]=OP_OR;
 				nextVal=true;
 				break;
 			case '!':
+				hadSpace=false;
 				valStack[valCount-1]=valStack[valCount-1]==0?1:0;
 				nextVal=true;
 				break;
 			case '~':
+				hadSpace=false;
 				valStack[valCount-1]=~valStack[valCount-1];
 				nextVal=true;
 				break;
 			case '(':
+				hadSpace=false;
 				if(!nextVal){//evaluate unfinished integers
 					evaluateOps(0);
 					nextVal=true;
@@ -271,6 +287,7 @@ void runProgram(char* chars,size_t size){
 				nextVal=true;
 				break;
 			case ')':
+				hadSpace=false;
 				evaluateOps(0);
 				if(opStack[opCount-1]!=OP_BRACKET){
 					fputs("unfinished expression in bracket",stderr);exit(1);
@@ -311,7 +328,7 @@ void runProgram(char* chars,size_t size){
 				if(valStack[valCount-1]!=0){
 					ipStack[ipCount++]=ip;
 				}else{
-					skipLoop=true;
+					loopCount=1;
 				}
 				valCount--;
 				nextVal=true;
@@ -327,32 +344,35 @@ void runProgram(char* chars,size_t size){
 				nextVal=true;
 				break;
 			case ':'://duplicate top value
+				hadSpace=false;
 				evaluateOps(0);
 				valStack[valCount]=valStack[valCount-1];
 				valCount++;
 				nextVal=true;
 				break;
 			case '.'://drop last element
+				hadSpace=false;
 				evaluateOps(0);
 				valCount--;
 				nextVal=true;
 				break;
 			case '{':
+				hadSpace=false;
 				evaluateOps(0);
 				valStack[valCount++]=ip;
 				nextVal=true;
-				skipProc=true;
-				break;
-			case '?':;
-				uint64_t to=valStack[--valCount];
-				ipStack[ipCount++]=ip;
-				ip=to;
+				procCount=1;
 				break;
 			case '}':
 				if(ipCount<=0){
 					fputs("unexpected return '}'",stderr);exit(1);
 				}
 				ip=ipStack[--ipCount];//return
+				break;
+			case '?':;
+				uint64_t to=valStack[--valCount];
+				ipStack[ipCount++]=ip;
+				ip=to;
 				break;
 			case ';':
 				evaluateOps(0);
@@ -365,18 +385,21 @@ void runProgram(char* chars,size_t size){
 				nextVal=true;
 				break;
 			case '\'':
+				hadSpace=false;
 				evaluateOps(0);
 				valStack[valCount++]=getchar();
 				nextVal=true;
 				break;
 			case '"':
+				hadSpace=false;
 				ipStack[ipCount++]=valCount;
 				stringMode=true;
 				break;
 			default:
-				if(!nextVal){
+				if(!hadSpace){
 					evaluateOps(0);
 					nextVal=true;
+					hadSpace=true;
 				}
 				break;
 			}
