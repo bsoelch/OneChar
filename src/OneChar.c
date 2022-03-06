@@ -51,13 +51,10 @@ bool nextVal=true;
 Operator opStack[1024];
 size_t opCount=0;
 size_t opCap=1024;
-size_t jumpStack[1024];
-size_t jumpCount=0;
-size_t jumpCap=1024;
+size_t ipStack[1024];
+size_t ipCount=0;
+size_t ipCap=1024;
 bool skipLoop=false;
-size_t callStack[1024];
-size_t callCount=0;
-size_t callCap=1024;
 bool skipProc=false;
 
 bool stringMode=false;
@@ -178,7 +175,7 @@ void runProgram(char* chars,size_t size){
 				escapeMode=true;
 			}else if(chars[ip]=='"'){
 				stringMode=false;
-				int64_t size=valCount-callStack[--callCount];
+				int64_t size=valCount-ipStack[--ipCount];
 				valStack[valCount++]=size;
 			}else{
 				valStack[valCount++]=chars[ip];
@@ -228,7 +225,7 @@ void runProgram(char* chars,size_t size){
 				nextVal=true;
 				break;
 			case '^':
-				evaluateOps(opLevel[OP_POW]);
+				evaluateOps(opLevel[OP_POW]+1);
 				opStack[opCount++]=OP_POW;
 				nextVal=true;
 				break;
@@ -266,7 +263,10 @@ void runProgram(char* chars,size_t size){
 				nextVal=true;
 				break;
 			case '(':
-				//don't evaluate before op-open
+				if(!nextVal){//evaluate unfinished integers
+					evaluateOps(0);
+					nextVal=true;
+				}
 				opStack[opCount++]=OP_BRACKET;
 				nextVal=true;
 				break;
@@ -309,7 +309,7 @@ void runProgram(char* chars,size_t size){
 			case '[':
 				evaluateOps(0);
 				if(valStack[valCount-1]!=0){
-					jumpStack[jumpCount++]=ip;
+					ipStack[ipCount++]=ip;
 				}else{
 					skipLoop=true;
 				}
@@ -319,9 +319,9 @@ void runProgram(char* chars,size_t size){
 			case ']':
 				evaluateOps(0);
 				if(valStack[valCount-1]!=0){
-					ip=jumpStack[jumpCount-1];
+					ip=ipStack[ipCount-1];
 				}else{
-					jumpCount--;
+					ipCount--;
 				}
 				valCount--;
 				nextVal=true;
@@ -345,14 +345,14 @@ void runProgram(char* chars,size_t size){
 				break;
 			case '?':;
 				uint64_t to=valStack[--valCount];
-				callStack[callCount++]=ip;
+				ipStack[ipCount++]=ip;
 				ip=to;
 				break;
 			case '}':
-				if(callCount<=0){
+				if(ipCount<=0){
 					fputs("unexpected return '}'",stderr);exit(1);
 				}
-				ip=callStack[--callCount];//return
+				ip=ipStack[--ipCount];//return
 				break;
 			case ';':
 				evaluateOps(0);
@@ -370,7 +370,7 @@ void runProgram(char* chars,size_t size){
 				nextVal=true;
 				break;
 			case '"':
-				callStack[callCount++]=valCount;
+				ipStack[ipCount++]=valCount;
 				stringMode=true;
 				break;
 			default:
@@ -458,11 +458,11 @@ int main(int numArgs,char** args) {
 			printf("IO Error while opening File: %s\n",code);
 			return EXIT_FAILURE;
 		}
+		code[size]='\0';//null-terminate string (for printf)
 	}else{
 		size=strlen(code);
 	}
 	//print buffer
-	code[size]='\0';//null-terminate string (for printf)
 	printf("loaded program:\n%s\n\n",code);
 	runProgram(code,size);
 	if(loadFile){
