@@ -162,7 +162,7 @@ results in the values `1` `0` `0` being on the stack.
      - if it is positive the element at that index in the stack, 
      (counting up from the top element which is labeled with 1)
      will be pushed on top of the stack.
-     - if it is negative the element at that index in the stack
+     - if it is zero or negative the element at that index in the stack
      (counting down from the top element which is labeled with 0),
      will be set to the value of the top element in the stack.
      

@@ -186,7 +186,7 @@ void runProgram(char* chars,size_t size){//unsused characters: `
 				procCount--;
 			}
 		}else if(loopCount>0){
-			if(chars[ip]==']'){
+			if(chars[ip]=='['){
 				loopCount++;
 			}else if(chars[ip]==']'){
 				loopCount--;
@@ -216,7 +216,6 @@ void runProgram(char* chars,size_t size){//unsused characters: `
 				nextVal=true;
 				break;
 			case '*':
-				hadSpace=false;
 				hadSpace=false;
 				evaluateOps(opLevel[OP_MULT]);
 				opStack[opCount++]=OP_MULT;
