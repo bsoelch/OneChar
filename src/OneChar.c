@@ -141,7 +141,7 @@ void evaluateOps(int nextLevel){
 	}
 }
 
-void runProgram(char* chars,size_t size){//unsused characters: `
+void runProgram(char* chars,size_t size){//unused characters: `
 	for(size_t ip=0;ip<size;ip++){
 	  if(comment){
 	    if(chars[ip]=='\\'||chars[ip]=='\n')
