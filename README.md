@@ -18,7 +18,7 @@ Fibonacci-Numbers:
 1$0 1$1 1[1@(0@+1@)$1$0 1@:;<1000]
 ```
 
-more examples can be found in the Examples folder
+more examples can be found in the examples folder
 ## Syntax
 Each operation is exactly one printable ASCII-character,
 all characters are executed from left to right.
