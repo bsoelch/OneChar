@@ -1,0 +1,19 @@
+{::[(:+2)#,-1:].:[-1 0~#].}$4 \prints a string to the console
+
+{ \ converts the top number on the stack to a string
+:0 \ prepare stack ( chars ... number number char-count )
+2#<0["-".2~#.+1:3#~+1 2~#1~#.0] \sign for negative numbers
+2#%10 :<0[~+1 0]+("0".) 2~#.+1:3#/10:<0[~+1 0] 2~#1~#. \push first digit, ensure number is positive
+2#[2#%10+("0".) 2~#.+1:3#/10 2~#1~#.2#] \push remaining digits
+1~#.. \cleanup stack
+:(:+2)#=("-".)[-1 0]0 2#>2#[(2#+3)#(2#+5)#(4#~-3)#.(2#~-3)#.+1 2#-1 1~#. 2#>2#].. \reverse digits, keep - in place
+}$1
+
+123456789 1@? 4@?
+"\n" 4@?
+
+41~ 1@? 4@?
+"\n" 4@?
+
+9223372036854775808 1@? 4@?
+"\n" 4@?

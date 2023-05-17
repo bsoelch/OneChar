@@ -3,7 +3,7 @@ is a simple stack-based programming language.
 
 Every operation takes exactly one printable ASCII-character
 
-## Examples
+## Example Programs
 
 Hello World:
 
@@ -18,12 +18,7 @@ Fibonacci-Numbers:
 1$0 1$1 1[1@(0@+1@)$1$0 1@:;<1000]
 ```
 
-Cat Program:
-
-```
-':("\n".=)![,':("\n".=)!].
-```
-
+more examples can be found in the Examples folder
 ## Syntax
 Each operation is exactly one printable ASCII-character,
 all characters are executed from left to right.
@@ -170,11 +165,11 @@ Example:
 
 ```
 1 2 : 3 4 5 .
-2# (0-1)#
+2# 0~# \ 0~ is -1
 ```
 the first line results in `4` `3` `2` `2` `1` being on the stack.
-After `2#` there is `3` `4` `3` `2` `2` `1` on the stack
-and `(0-1)#` replaces the `4` resulting in `3` `3` `3` `2` `2` `1`.
+`2#` copies the 2nd element to the top giving `3` `4` `3` `2` `2` `1`.
+`0~#` (index -1) replaces element 1 counting from 0 which is `4` resulting in `3` `3` `3` `2` `2` `1`.
 
 ### IO
 
@@ -249,7 +244,7 @@ to `15`.
 The Hello World example defines the routine 
 
 ```
-{::[(:+2)#,-1:].:[-1 (0-1)#].}$4
+{::[(:+2)#,-1:].:[-1 0~#].}$4
 ```
 which prints all characters of a string in reversed order,
  and the removes them from the stack.
