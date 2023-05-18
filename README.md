@@ -5,6 +5,16 @@ Every operation takes exactly one printable ASCII-character
 
 ## Example Programs
 
+Simple Arithmetic:
+OneChar can evaluate simple arithmetic expressions consisting of numbers, brackets and the operators `+` `-` `*` `/` `%` `^`
+```
+1+1; \ prints 2
+```
+
+```
+3^4*5%6; \ computes ((3^4)*5)%6 prints 3
+```
+
 Hello World:
 
 ```
@@ -22,8 +32,7 @@ more examples can be found in the examples folder
 ## Syntax
 Each operation is exactly one printable ASCII-character,
 all characters are executed from left to right.
-The program state consist of 3-stacks (value,operator and ip) 
-an array for random-access memory two counters and 4 boolean flags.
+
 ### Integers
 - The first digit in and integer-literal pushes that digit onto the value-stack.
 - Each further digit `k` takes the top value `N` from the stack and pushes `10*N+k` onto the stack.
@@ -65,6 +74,7 @@ pushes the char-code of `"` (`34`) and the length (`1`).
 
 `\\` comments out all code until the next `\\` or newline character
 
+
 ### Operations
 Unary operators are evaluated in postfix-notation, 
 unlike in most stack-based languages binary operators 
@@ -76,9 +86,6 @@ are evaluated in infix notation.
 - `@` loads the value at the memory address given by the value on top of the stack.
 
 Unary operations have precedence over binary operations 
-
-results in the values `0` `-43` 
-as well as whatever was stored at address `0` being on the stack.
 
 #### Binary operators
 All binary operations take two values from the top of the stack and push 
@@ -165,16 +172,16 @@ Example:
 
 ```
 1 2 : 3 4 5 .
-2# 0~# \ 0~ is -1
+2# 0~#
 ```
 the first line results in `4` `3` `2` `2` `1` being on the stack.
 `2#` copies the 2nd element to the top giving `3` `4` `3` `2` `2` `1`.
-`0~#` (index -1) replaces element 1 counting from 0 which is `4` resulting in `3` `3` `3` `2` `2` `1`.
+`0~#` (`0~` is -1) replaces element 1 counting from 0 which is `4` resulting in `3` `3` `3` `2` `2` `1`.
 
 ### IO
 
 - `;` prints the top value on the stack as (signed base 10) integer,
- and starts a new line. (!!!may be removed in a future version!!!)
+ and starts a new line.
 - `,` prints the lowest byte of top-value on the stack as a character.
 - `'` reads one character from standard input.
 
@@ -186,7 +193,7 @@ Examples:
 prints 2
 
 ```
-"Hello".,,,,,
+"olleH".,,,,,
 ```
 prints `Hello`
 
@@ -196,6 +203,7 @@ prints `Hello`
 prints the 4-byte UTF8 character `💻`. 
 Due to the stack-oriented way of saving strings,
 the bytes have to be printed in reverse order.
+
 
 ```
 ',
