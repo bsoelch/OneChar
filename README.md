@@ -90,33 +90,29 @@ Unary operations have precedence over binary operations
 #### Binary operators
 All binary operations take two values from the top of the stack and push 
 the result of the given operation.
-grouped by their precedence, with the lowest precedence at the top.
 Binary operations are stored on the operator-stack until a 2nd operand and 
 an operator with lower or equal precedence (or a white-space) is pushed.
 
+The supported binary operations in order of increasing precedence are:
+
 - `&` logical and
 - `|` logical or
-
-
+&nbsp;
 - `>` pushes `1` if the left value is greater that the right value, `0`otherwise
 - `<` pushes `1` if the left value is less that the right value, `0`otherwise
 - `=` pushes `1` if the left value is equal to the right value, `0`otherwise	
-	
-		
+&nbsp;
 - `+` adds the top two values on the stack 
 - `-` subtracts the top value on the stack from the value below it
-
-
+&nbsp;
 - `*` multiplies the top two values on the stack
 - `/` divides the 2nd value on the stack be the top value on the stack.
 - `%` remainder of the division of the 2nd-value by the top-value 
-
-
+&nbsp;
 - `^` pushes the 2nd value on the stack to the power of the top value on the stack.
  unlike the other operators this operation is weaker than itself,
   and therefor is evaluated right to left.
-  
-
+&nbsp;
 - `$` saves the 2nd value on the stack, 
 at the address given be the top value on the stack. 
 This operation does not push a value on the stack.
