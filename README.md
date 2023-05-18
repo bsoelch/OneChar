@@ -118,8 +118,7 @@ The supported binary operations in order of increasing precedence are:
 &nbsp;
 
 - `^` pushes the 2nd value on the stack to the power of the top value on the stack.
- unlike the other operators this operation is weaker than itself,
-  and therefor is evaluated right to left.
+ unlike the other operators this operation is evaluated right to left.
 
 &nbsp;
 
