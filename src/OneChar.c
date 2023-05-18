@@ -36,6 +36,7 @@ int opLevel[]={
 };
 
 int64_t mem[1024];
+int64_t memCap=1024;
 int64_t valStack[1024];
 int64_t valCount=0;
 size_t valCap=1024;
@@ -54,62 +55,73 @@ bool comment=false;
 bool stringMode=false;
 bool escapeMode=false;
 
-void evaluateOps(int nextLevel){
+
+void pushValue(int64_t val){
+  if(valCount<0){
+    fputs("stack-underflow\n",stderr);exit(1);
+  }
+  if(((size_t)valCount)>=valCap){
+    fputs("stack-overflow\n",stderr);exit(1);
+  }
+  valStack[valCount++]=val;
+}
+
+void evaluateOps(int nextLevel){//TODO print error positions
 	while(opCount>0){
 		if(opStack[opCount-1]!=OP_BRACKET&&opLevel[opStack[opCount-1]]>=nextLevel){
 			switch(opStack[--opCount]){
 			case OP_AND:
-				if(valCount<2){fputs("not enough arguments for '&'",stderr);exit(1);};
+				if(valCount<2){fputs("not enough arguments for '&'\n",stderr);exit(1);};
 				valCount--;
 				valStack[valCount-1]&=valStack[valCount];
 				break;
 			case OP_OR:
-				if(valCount<2){fputs("not enough arguments for '>'",stderr);exit(1);};
+				if(valCount<2){fputs("not enough arguments for '>'\n",stderr);exit(1);};
 				valCount--;
 				valStack[valCount-1]|=valStack[valCount];
 				break;
 			case OP_GT:
-				if(valCount<2){fputs("not enough arguments for '>'",stderr);exit(1);};
+				if(valCount<2){fputs("not enough arguments for '>'\n",stderr);exit(1);};
 				valCount--;
 				valStack[valCount-1]=valStack[valCount-1]>valStack[valCount]?1:0;
 				break;
 			case OP_LT:
-				if(valCount<2){fputs("not enough arguments for '<'",stderr);exit(1);};
+				if(valCount<2){fputs("not enough arguments for '<'\n",stderr);exit(1);};
 				valCount--;
 				valStack[valCount-1]=valStack[valCount-1]<valStack[valCount]?1:0;
 				break;
 			case OP_EQ:
-				if(valCount<2){fputs("not enough arguments for '='",stderr);exit(1);};
+				if(valCount<2){fputs("not enough arguments for '='\n",stderr);exit(1);};
 				valCount--;
 				valStack[valCount-1]=valStack[valCount-1]==valStack[valCount]?1:0;
 				break;
 			case OP_PLUS:
-				if(valCount<2){fputs("not enough arguments for '+'",stderr);exit(1);};
+				if(valCount<2){fputs("not enough arguments for '+'\n",stderr);exit(1);};
 				valCount--;
 				valStack[valCount-1]+=valStack[valCount];
 				break;
 			case OP_MINUS:
-				if(valCount<2){fputs("not enough arguments for '-'",stderr);exit(1);};
+				if(valCount<2){fputs("not enough arguments for '-'\n",stderr);exit(1);};
 				valCount--;
 				valStack[valCount-1]-=valStack[valCount];
 				break;
 			case OP_MULT:
-				if(valCount<2){fputs("not enough arguments for '*'",stderr);exit(1);};
+				if(valCount<2){fputs("not enough arguments for '*'\n",stderr);exit(1);};
 				valCount--;
 				valStack[valCount-1]*=valStack[valCount];
 				break;
 			case OP_DIV:
-				if(valCount<2){fputs("not enough arguments for '/'",stderr);exit(1);};
+				if(valCount<2){fputs("not enough arguments for '/'\n",stderr);exit(1);};
 				valCount--;
 				valStack[valCount-1]/=valStack[valCount];
 				break;
 			case OP_MOD:
-				if(valCount<2){fputs("not enough arguments for '%'",stderr);exit(1);};
+				if(valCount<2){fputs("not enough arguments for '%'\n",stderr);exit(1);};
 				valCount--;
 				valStack[valCount-1]%=valStack[valCount];
 				break;
 			case OP_POW:
-				if(valCount<2){fputs("not enough arguments for '^'",stderr);exit(1);};
+				if(valCount<2){fputs("not enough arguments for '^'\n",stderr);exit(1);};
 				valCount--;
 				int64_t pow=1,a=valStack[valCount-1],e=valStack[valCount];
 				if(e<0){
@@ -126,13 +138,16 @@ void evaluateOps(int nextLevel){
 				valStack[valCount-1]=pow;
 				break;
 			case OP_SAVE:
-				if(valCount<2){fputs("not enough arguments for '$'",stderr);exit(1);};
+				if(valCount<2){fputs("not enough arguments for '$'\n",stderr);exit(1);};
 				valCount--;
+				if(valStack[valCount]<0||valStack[valCount]>=memCap){
+				  fprintf(stderr,"memory address out of range: %"PRIi64"\n",valStack[valCount]);exit(1);
+				}
 				mem[valStack[valCount]]=valStack[valCount-1];
 				valCount--;
 				break;
 			case OP_BRACKET:
-				fputs("unreachable",stderr);exit(1);
+				fputs("unreachable\n",stderr);exit(1);
 				break;
 			}
 		}else{
@@ -153,19 +168,19 @@ void runProgram(char* chars,size_t size){//unused characters: `
 				escapeMode=false;
 				switch(chars[ip]){
 				case '"':
-					valStack[valCount++]='"';
+					pushValue('"');
 					break;
 				case '\\':
-					valStack[valCount++]='\\';
+					pushValue('\\');
 					break;
 				case 'n':
-					valStack[valCount++]='\n';
+					pushValue('\n');
 					break;
 				case 't':
-					valStack[valCount++]='\t';
+					pushValue('\t');
 					break;
 				case 'r':
-					valStack[valCount++]='\r';
+					pushValue('\r');
 					break;
 				default:
 					fprintf(stderr,"unsupported escape sequence: \\%c\n",chars[ip]);exit(1);
@@ -175,9 +190,9 @@ void runProgram(char* chars,size_t size){//unused characters: `
 			}else if(chars[ip]=='"'){
 				stringMode=false;
 				int64_t tmp=valCount-ipStack[--ipCount];
-				valStack[valCount++]=tmp;
+				pushValue(tmp);
 			}else{
-				valStack[valCount++]=chars[ip];
+				pushValue(chars[ip]);
 			}
 		}else if(procCount>0){
 			if(chars[ip]=='{'){
@@ -198,7 +213,7 @@ void runProgram(char* chars,size_t size){//unused characters: `
 				hadSpace=false;
 				if(nextVal){
 					nextVal=false;
-					valStack[valCount++]=chars[ip]-'0';
+					pushValue(chars[ip]-'0');
 				}else{
 					valStack[valCount-1]=10*valStack[valCount-1]+(chars[ip]-'0');
 				}
@@ -266,11 +281,13 @@ void runProgram(char* chars,size_t size){//unused characters: `
 				break;
 			case '!':
 				hadSpace=false;
+				if(valCount<1){fputs("not enough arguments for '!'\n",stderr);exit(1);};
 				valStack[valCount-1]=valStack[valCount-1]==0?1:0;
 				nextVal=true;
 				break;
 			case '~':
 				hadSpace=false;
+				if(valCount<1){fputs("not enough arguments for '~'\n",stderr);exit(1);};
 				valStack[valCount-1]=~valStack[valCount-1];
 				nextVal=true;
 				break;
@@ -287,12 +304,16 @@ void runProgram(char* chars,size_t size){//unused characters: `
 				hadSpace=false;
 				evaluateOps(0);
 				if(opStack[opCount-1]!=OP_BRACKET){
-					fputs("unfinished expression in bracket",stderr);exit(1);
+					fputs("unfinished expression in bracket\n",stderr);exit(1);
 				}
 				opCount--;
 				nextVal=true;
 				break;
 			case '@':
+				if(valCount<1){fputs("not enough arguments for '@'\n",stderr);exit(1);};
+				if(valStack[valCount-1]<0||valStack[valCount-1]>=memCap){
+				  fprintf(stderr,"memory address out of range: %"PRIi64"\n",valStack[valCount-1]);exit(1);
+				}
 				valStack[valCount-1]=mem[valStack[valCount-1]];
 				nextVal=true;
 				break;
@@ -302,6 +323,7 @@ void runProgram(char* chars,size_t size){//unused characters: `
 				nextVal=true;
 				break;
 			case '#':;
+				if(valCount<1){fputs("not enough arguments for '#'\n",stderr);exit(1);};
 				int64_t id=valStack[valCount-1];
 				valCount--;
 				if(id<=0){
@@ -315,13 +337,13 @@ void runProgram(char* chars,size_t size){//unused characters: `
 					if(id>valCount){
 						fprintf(stderr,"stack index out of bounds %"PRId64"\n",id);exit(1);
 					}
-					valStack[valCount]=valStack[valCount-id];
-					valCount++;
+					pushValue(valStack[valCount-id]);
 					nextVal=true;
 				}
 				break;
 			case '[':
 				evaluateOps(0);
+				if(valCount<1){fputs("not enough arguments for '['\n",stderr);exit(1);};
 				if(valStack[valCount-1]!=0){
 					ipStack[ipCount++]=ip;
 				}else{
@@ -332,6 +354,7 @@ void runProgram(char* chars,size_t size){//unused characters: `
 				break;
 			case ']':
 				evaluateOps(0);
+				if(valCount<1){fputs("not enough arguments for ']'\n",stderr);exit(1);};
 				if(valStack[valCount-1]!=0){
 					ip=ipStack[ipCount-1];
 				}else{
@@ -343,48 +366,52 @@ void runProgram(char* chars,size_t size){//unused characters: `
 			case ':'://duplicate top value
 				hadSpace=false;
 				evaluateOps(0);
-				valStack[valCount]=valStack[valCount-1];
-				valCount++;
+				if(valCount<1){fputs("not enough arguments for ':'\n",stderr);exit(1);};
+				pushValue(valStack[valCount-1]);
 				nextVal=true;
 				break;
 			case '.'://drop last element
 				hadSpace=false;
 				evaluateOps(0);
+				if(valCount<1){fputs("not enough arguments for '.'\n",stderr);exit(1);};
 				valCount--;
 				nextVal=true;
 				break;
 			case '{':
 				hadSpace=false;
 				evaluateOps(0);
-				valStack[valCount++]=ip;
+				pushValue(ip);
 				nextVal=true;
 				procCount=1;
 				break;
 			case '}':
 				if(ipCount<=0){
-					fputs("unexpected return '}'",stderr);exit(1);
+					fputs("unexpected '}'\n",stderr);exit(1);
 				}
 				ip=ipStack[--ipCount];//return
 				break;
 			case '?':;
+				if(valCount<1){fputs("not enough arguments for '?'\n",stderr);exit(1);};
 				uint64_t to=valStack[--valCount];
 				ipStack[ipCount++]=ip;
 				ip=to;
 				break;
 			case ';':
 				evaluateOps(0);
+				if(valCount<1){fputs("not enough arguments for ';'\n",stderr);exit(1);};
 				printf("%"PRId64"\n",valStack[--valCount]);
 				nextVal=true;
 				break;
 			case ',':
 				evaluateOps(0);
+				if(valCount<1){fputs("not enough arguments for ','\n",stderr);exit(1);};
 				printf("%c",(char)valStack[--valCount]);
 				nextVal=true;
 				break;
 			case '\'':
 				hadSpace=false;
 				evaluateOps(0);
-				valStack[valCount++]=getchar();
+				pushValue(getchar());
 				nextVal=true;
 				break;
 			case '"':
