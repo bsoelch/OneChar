@@ -35,27 +35,68 @@ int opLevel[]={
 		[OP_SAVE]=6,
 };
 
-int64_t mem[4096];
-int64_t memCap=4096;
+#define PAGES_CAP 1024
+#define PAGE_SIZE 4096
+#define PAGE_MASK 0xfff
+static int64_t mem[PAGE_SIZE];
+typedef struct MemPage MemPage;
+struct MemPage{
+  int64_t pageId;
+  int64_t* data;
+  MemPage* next;
+};
+static MemPage memPages[PAGES_CAP];
 
-int64_t valStack[1024];
-int64_t valCount=0;
-size_t valCap=1024;
-bool nextVal=true;
-bool hadSpace=false;
-Operator opStack[1024];
-size_t opCount=0;
-size_t opCap=1024;
-size_t ipStack[1024];
-size_t ipCount=0;
-size_t ipCap=1024;
-int64_t loopCount=0;
-int64_t procCount=0;
+static int64_t valStack[1024];
+static int64_t valCount=0;
+static size_t valCap=1024;
+static bool nextVal=true;
+static bool hadSpace=false;
+static Operator opStack[1024];
+static size_t opCount=0;
+static size_t opCap=1024;
+static size_t ipStack[1024];
+static size_t ipCount=0;
+static size_t ipCap=1024;
+static int64_t loopCount=0;
+static int64_t procCount=0;
 
-bool comment=false;
-bool stringMode=false;
-bool escapeMode=false;
+static bool comment=false;
+static bool stringMode=false;
+static bool escapeMode=false;
 
+
+MemPage* newPage(MemPage* target,int64_t pageId){
+  target->pageId=pageId;
+  target->data=calloc(PAGE_SIZE,sizeof(MemPage));
+	if(target->data==NULL){
+    fputs("out-of memory\n",stderr);exit(1);
+	}
+  target->next=NULL;
+  return target;
+}
+int64_t* getMemory(int64_t address){//XXX? only allocate on write with non-zero value
+  int64_t pageId=((uint64_t)address)/PAGE_SIZE;
+  if(pageId==0)
+    return &mem[address];
+  MemPage* page=&memPages[pageId%PAGES_CAP];
+  if(page->pageId==0){
+    return &newPage(page,pageId)->data[address&PAGE_MASK];
+  }
+	if(page->pageId==pageId)
+	  return &page->data[address&PAGE_MASK];
+	while(page->next!=NULL){
+	  page=page->next;
+	  if(page->pageId==pageId)
+	    return &page->data[address&PAGE_MASK];
+	}
+	page->next=malloc(sizeof(MemPage));
+	if(page->next==NULL){
+    fputs("out-of memory\n",stderr);exit(1);
+	}
+	page=page->next;
+  return &newPage(page,pageId)->data[address&PAGE_MASK];
+}
 
 void pushValue(int64_t val){
   if(valCount<0){
@@ -66,11 +107,30 @@ void pushValue(int64_t val){
   }
   valStack[valCount++]=val;
 }
-int64_t* getMemory(int64_t address){//TODO automatically allocate memory-cells if address outside allocated range
-	if(address<0||address>=memCap){
-	  fprintf(stderr,"memory address out of range: %"PRIi64"\n",address);exit(1);
-	}
-	return &mem[address];
+void pushOp(Operator op){
+  if(opCount>=opCap){
+    fputs("op-stack overflow\n",stderr);exit(1);
+  }
+  opStack[opCount++]=op;
+}
+
+void callStackPush(int64_t ip){
+  if(ipCount>=ipCap){
+    fputs("call-stack overflow\n",stderr);exit(1);
+  }
+  ipStack[ipCount++]=ip;
+}
+int64_t callStackPeek(void){
+  if(ipCount<1){
+    fputs("call-stack underflow\n",stderr);exit(1);
+  }
+  return ipStack[ipCount-1];
+}
+int64_t callStackPop(void){
+  if(ipCount<1){
+    fputs("call-stack underflow\n",stderr);exit(1);
+  }
+  return ipStack[--ipCount];
 }
 
 void evaluateOps(int nextLevel){//TODO print error positions
@@ -193,7 +253,7 @@ void runProgram(char* chars,size_t size){//unused characters: `
 				escapeMode=true;
 			}else if(chars[ip]=='"'){
 				stringMode=false;
-				int64_t tmp=valCount-ipStack[--ipCount];
+				int64_t tmp=valCount-callStackPop();
 				pushValue(tmp);
 			}else{
 				pushValue(chars[ip]);
@@ -225,62 +285,62 @@ void runProgram(char* chars,size_t size){//unused characters: `
 			case '+':
 				hadSpace=false;
 				evaluateOps(opLevel[OP_PLUS]);
-				opStack[opCount++]=OP_PLUS;//TODO check op-stack capacity
+				pushOp(OP_PLUS);
 				nextVal=true;
 				break;
 			case '-':
 				hadSpace=false;
 				evaluateOps(opLevel[OP_MINUS]);
-				opStack[opCount++]=OP_MINUS;
+				pushOp(OP_MINUS);
 				nextVal=true;
 				break;
 			case '*':
 				hadSpace=false;
 				evaluateOps(opLevel[OP_MULT]);
-				opStack[opCount++]=OP_MULT;
+				pushOp(OP_MULT);
 				nextVal=true;
 				break;
 			case '/':
 				hadSpace=false;
 				evaluateOps(opLevel[OP_DIV]);
-				opStack[opCount++]=OP_DIV;
+				pushOp(OP_DIV);
 				nextVal=true;
 				break;
 			case '%':
 				hadSpace=false;
 				evaluateOps(opLevel[OP_MOD]);
-				opStack[opCount++]=OP_MOD;
+				pushOp(OP_MOD);
 				nextVal=true;
 				break;
 			case '^':
 				evaluateOps(opLevel[OP_POW]+1);
-				opStack[opCount++]=OP_POW;
+				pushOp(OP_POW);
 				nextVal=true;
 				break;
 			case '>':
 				evaluateOps(opLevel[OP_GT]);
-				opStack[opCount++]=OP_GT;
+				pushOp(OP_GT);
 				nextVal=true;
 				break;
 			case '<':
 				evaluateOps(opLevel[OP_LT]);
-				opStack[opCount++]=OP_LT;
+				pushOp(OP_LT);
 				nextVal=true;
 				break;
 			case '=':
 				evaluateOps(opLevel[OP_EQ]);
-				opStack[opCount++]=OP_EQ;
+				pushOp(OP_EQ);
 				nextVal=true;
 				break;
 			case '&':
 				evaluateOps(opLevel[OP_AND]);
-				opStack[opCount++]=OP_AND;
+				pushOp(OP_AND);
 				nextVal=true;
 				break;
 			case '|':
 				hadSpace=false;
 				evaluateOps(opLevel[OP_OR]);
-				opStack[opCount++]=OP_OR;
+				pushOp(OP_OR);
 				nextVal=true;
 				break;
 			case '!':
@@ -301,12 +361,15 @@ void runProgram(char* chars,size_t size){//unused characters: `
 					evaluateOps(0);
 					nextVal=true;
 				}
-				opStack[opCount++]=OP_BRACKET;
+				pushOp(OP_BRACKET);
 				nextVal=true;
 				break;
 			case ')':
 				hadSpace=false;
 				evaluateOps(0);
+				if(opCount<1){
+				  fputs("unexpected ')'\n",stderr);exit(1);
+				}
 				if(opStack[opCount-1]!=OP_BRACKET){
 					fputs("unfinished expression in bracket\n",stderr);exit(1);
 				}
@@ -320,7 +383,7 @@ void runProgram(char* chars,size_t size){//unused characters: `
 				break;
 			case '$':;
 				evaluateOps(opLevel[OP_SAVE]);
-				opStack[opCount++]=OP_SAVE;
+				pushOp(OP_SAVE);
 				nextVal=true;
 				break;
 			case '#':;
@@ -346,7 +409,7 @@ void runProgram(char* chars,size_t size){//unused characters: `
 				evaluateOps(0);
 				if(valCount<1){fputs("not enough arguments for '['\n",stderr);exit(1);};
 				if(valStack[valCount-1]!=0){
-					ipStack[ipCount++]=ip;
+					callStackPush(ip);
 				}else{
 					loopCount=1;
 				}
@@ -357,9 +420,9 @@ void runProgram(char* chars,size_t size){//unused characters: `
 				evaluateOps(0);
 				if(valCount<1){fputs("not enough arguments for ']'\n",stderr);exit(1);};
 				if(valStack[valCount-1]!=0){
-					ip=ipStack[ipCount-1];
+					ip=callStackPeek();
 				}else{
-					ipCount--;
+					callStackPop();
 				}
 				valCount--;
 				nextVal=true;
@@ -389,12 +452,12 @@ void runProgram(char* chars,size_t size){//unused characters: `
 				if(ipCount<=0){
 					fputs("unexpected '}'\n",stderr);exit(1);
 				}
-				ip=ipStack[--ipCount];//return
+				ip=callStackPop();//return
 				break;
 			case '?':;
 				if(valCount<1){fputs("not enough arguments for '?'\n",stderr);exit(1);};
 				uint64_t to=valStack[--valCount];
-				ipStack[ipCount++]=ip;
+				callStackPush(ip);
 				ip=to;
 				break;
 			case ';':
@@ -417,7 +480,7 @@ void runProgram(char* chars,size_t size){//unused characters: `
 				break;
 			case '"':
 				hadSpace=false;
-				ipStack[ipCount++]=valCount;
+				callStackPush(valCount);
 				stringMode=true;
 				break;
 			case '\\':
