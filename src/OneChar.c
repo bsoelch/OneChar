@@ -35,8 +35,9 @@ int opLevel[]={
 		[OP_SAVE]=6,
 };
 
-int64_t mem[1024];
-int64_t memCap=1024;
+int64_t mem[4096];
+int64_t memCap=4096;
+
 int64_t valStack[1024];
 int64_t valCount=0;
 size_t valCap=1024;
@@ -64,6 +65,12 @@ void pushValue(int64_t val){
     fputs("stack-overflow\n",stderr);exit(1);
   }
   valStack[valCount++]=val;
+}
+int64_t* getMemory(int64_t address){//TODO automatically allocate memory-cells if address outside allocated range
+	if(address<0||address>=memCap){
+	  fprintf(stderr,"memory address out of range: %"PRIi64"\n",address);exit(1);
+	}
+	return &mem[address];
 }
 
 void evaluateOps(int nextLevel){//TODO print error positions
@@ -140,10 +147,7 @@ void evaluateOps(int nextLevel){//TODO print error positions
 			case OP_SAVE:
 				if(valCount<2){fputs("not enough arguments for '$'\n",stderr);exit(1);};
 				valCount--;
-				if(valStack[valCount]<0||valStack[valCount]>=memCap){
-				  fprintf(stderr,"memory address out of range: %"PRIi64"\n",valStack[valCount]);exit(1);
-				}
-				mem[valStack[valCount]]=valStack[valCount-1];
+				*getMemory(valStack[valCount])=valStack[valCount-1];
 				valCount--;
 				break;
 			case OP_BRACKET:
@@ -221,7 +225,7 @@ void runProgram(char* chars,size_t size){//unused characters: `
 			case '+':
 				hadSpace=false;
 				evaluateOps(opLevel[OP_PLUS]);
-				opStack[opCount++]=OP_PLUS;
+				opStack[opCount++]=OP_PLUS;//TODO check op-stack capacity
 				nextVal=true;
 				break;
 			case '-':
@@ -311,10 +315,7 @@ void runProgram(char* chars,size_t size){//unused characters: `
 				break;
 			case '@':
 				if(valCount<1){fputs("not enough arguments for '@'\n",stderr);exit(1);};
-				if(valStack[valCount-1]<0||valStack[valCount-1]>=memCap){
-				  fprintf(stderr,"memory address out of range: %"PRIi64"\n",valStack[valCount-1]);exit(1);
-				}
-				valStack[valCount-1]=mem[valStack[valCount-1]];
+				valStack[valCount-1]=*getMemory(valStack[valCount-1]);
 				nextVal=true;
 				break;
 			case '$':;
