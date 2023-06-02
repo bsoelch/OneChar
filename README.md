@@ -1,12 +1,12 @@
 # OneChar
-is a simple stack-based programming language. 
+is a minimalistic stack-based programming language.
 
 Every operation takes exactly one printable ASCII-character
 
 ## Example Programs
 
-Simple Arithmetic:
-OneChar can evaluate simple arithmetic expressions consisting of numbers, brackets and the operators `+` `-` `*` `/` `%` `^`
+Arithmetic operations:
+OneChar can evaluate arithmetic expressions consisting of numbers, brackets and the operators `+` `-` `*` `/` `%` `^`
 ```
 1+1; \ prints 2
 ```
